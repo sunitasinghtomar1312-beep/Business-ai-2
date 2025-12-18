@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoPulse | AI Business Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00ff88; --secondary: #00d4ff; --danger: #ff4757;
+            --bg: #03070b; --card: rgba(255, 255, 255, 0.04); --text: #ffffff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background-color: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+        .glow { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 50% -20%, #00ff8815, transparent 50%); z-index: -1; }
+        .container { max-width: 900px; margin: 0 auto; padding: 60px 20px; }
+        .glass-card { background: var(--card); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 32px; padding: 40px; box-shadow: 0 40px 100px rgba(0,0,0,0.5); }
+        h1 { font-size: 3rem; text-align: center; margin-bottom: 10px; font-weight: 800; letter-spacing: -1.5px; }
+        h1 span { background: linear-gradient(90deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        textarea { width: 100%; height: 140px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 18px; padding: 20px; color: white; font-size: 1.1rem; outline: none; resize: none; margin-top: 25px; transition: 0.3s; }
+        textarea:focus { border-color: var(--primary); }
+        button { width: 100%; padding: 20px; margin-top: 20px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border: none; border-radius: 18px; font-weight: 800; color: #000; cursor: pointer; transition: 0.3s; font-size: 1.1rem; }
+        button:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(0,255,136,0.2); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #results { margin-top: 50px; display: none; }
+        .status-header { text-align: center; font-size: 1.8rem; font-weight: 800; margin-bottom: 30px; padding: 20px; border-radius: 20px; }
+        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .metric { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05); }
+        .icon-box { font-size: 1.5rem; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; font-weight: 600; }
+        .progress-bg { background: rgba(255,255,255,0.1); height: 12px; border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; transition: 1.5s cubic-bezier(0.1, 0, 0, 1); }
+        .summary { background: rgba(255,255,255,0.02); padding: 30px; border-radius: 24px; border-left: 6px solid var(--primary); line-height: 1.8; color: #ccc; }
+        .loader { display: none; text-align: center; margin-top: 20px; color: var(--primary); font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="glow"></div>
+    <div class="container">
+        <div class="glass-card">
+            <h1>EcoPulse <span>Brain</span></h1>
+            <p style="text-align: center; color: #777;">True AI Business Validation Engine</p>
+            <textarea id="userInput" placeholder="Describe your business idea..."></textarea>
+            <button id="submitBtn" onclick="askGemini()">Analyze Idea</button>
+            <div id="loader" class="loader">Gemini AI is thinking...</div>
+        </div>
+        <div id="results">
+            <div id="statusHeader" class="status-header"></div>
+            <div class="metrics-grid">
+                <div class="metric"><div class="icon-box"><span>🌿</span> Sustainability</div><div class="progress-bg"><div id="bar-1" class="progress-fill"></div></div><p id="val-1" style="margin-top:5px">0/10</p></div>
+                <div class="metric"><div class="icon-box"><span>♻️</span> Eco-Score</div><div class="progress-bg"><div id="bar-2" class="progress-fill"></div></div><p id="val-2" style="margin-top:5px">0/10</p></div>
+                <div class="metric"><div class="icon-box"><span>📈</span> Profitability</div><div class="progress-bg"><div id="bar-3" class="progress-fill"></div></div><p id="val-3" style="margin-top:5px">0/10</p></div>
+                <div class="metric"><div class="icon-box"><span>🔭</span> Market Scope</div><div class="progress-bg"><div id="bar-4" class="progress-fill"></div></div><p id="val-4" style="margin-top:5px">0/10</p></div>
+            </div>
+            <div class="summary"><h3 style="color: white; margin-bottom: 10px;">AI Deep Reasoning</h3><p id="aiSummaryText"></p></div>
+        </div>
+    </div>
+    <script>
+        async function askGemini() {
+            const input = document.getElementById('userInput').value;
+            const btn = document.getElementById('submitBtn');
+            const loader = document.getElementById('loader');
+            if (!input) { alert("Please enter an idea!"); return; }
+            btn.disabled = true; loader.style.display = "block";
+            document.getElementById('results').style.display = "none";
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idea: input })
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                displayResults(data);
+            } catch (error) {
+                alert("AI Connection Error. Did you set the API Key in Vercel?");
+            } finally { btn.disabled = false; loader.style.display = "none"; }
+        }
+        function displayResults(json) {
+            document.getElementById('results').style.display = "block";
+            updateBar('bar-1', 'val-1', json.sustainability);
+            updateBar('bar-2', 'val-2', json.ecoFriendly);
+            updateBar('bar-3', 'val-3', json.profit);
+            updateBar('bar-4', 'val-4', json.market);
+            document.getElementById('aiSummaryText').innerText = json.summary;
+            const header = document.getElementById('statusHeader');
+            if(json.isGoodForEnv) {
+                header.innerText = "ENVIRONMENTALLY APPROVED ✅";
+                header.style.color = "var(--primary)"; header.style.background = "rgba(0, 255, 136, 0.1)";
+            } else {
+                header.innerText = "ENVIRONMENTAL RISK DETECTED ❌";
+                header.style.color = "var(--danger)"; header.style.background = "rgba(255, 71, 87, 0.1)";
+            }
+        }
+        function updateBar(id, txtId, val) {
+            const bar = document.getElementById(id);
+            bar.style.width = (val * 10) + "%";
+            document.getElementById(txtId).innerText = val + "/10";
+            bar.style.background = val > 7 ? "var(--primary)" : val > 4 ? "#ffa502" : "var(--danger)";
+        }
+    </script>
+</body>
+</html>
